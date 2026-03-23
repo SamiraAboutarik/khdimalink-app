@@ -1,0 +1,72 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg: #060B18;
+    --surface: #0B1120;
+    --card: #111827;
+    --border: rgba(255,255,255,0.07);
+    --teal: #0ABFBC;
+    --orange: #F97316;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background-color: var(--bg);
+    color: #F1F5F9;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,h2,h3,h4,h5,h6 { font-family: 'Plus Jakarta Sans', sans-serif; }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .gradient-teal { background: linear-gradient(135deg, #0ABFBC 0%, #0891B2 100%); }
+  .gradient-orange { background: linear-gradient(135deg, #F97316 0%, #EF4444 100%); }
+  .gradient-bg {
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(10,191,188,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 100%, rgba(249,115,22,0.08) 0%, transparent 60%),
+      #060B18;
+  }
+  .star-filled { color: #FBBF24; }
+  .star-empty  { color: #374151; }
+  .text-teal   { color: #0ABFBC; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse-ring {
+  0%   { transform: scale(1);   opacity: 1; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.animate-fadeInUp { animation: fadeInUp 0.5s ease forwards; }
+.anim-delay-1 { animation-delay: 0.1s; opacity: 0; }
+.anim-delay-2 { animation-delay: 0.2s; opacity: 0; }
+.anim-delay-3 { animation-delay: 0.3s; opacity: 0; }
+.anim-delay-4 { animation-delay: 0.4s; opacity: 0; }
+.anim-delay-5 { animation-delay: 0.5s; opacity: 0; }
+.anim-delay-6 { animation-delay: 0.6s; opacity: 0; }
+
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid #F97316;
+  animation: pulse-ring 1.5s ease-out infinite;
+}

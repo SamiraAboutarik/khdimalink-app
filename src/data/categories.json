@@ -1,0 +1,6 @@
+[
+  { "id": "plombier",    "label": "Plombier",    "icon": "🔧", "color": "from-blue-500  to-cyan-500",   "count": 24 },
+  { "id": "electricien", "label": "Électricien", "icon": "⚡", "color": "from-yellow-500 to-orange-500", "count": 18 },
+  { "id": "menuisier",   "label": "Menuisier",   "icon": "🪚", "color": "from-amber-600  to-yellow-600", "count": 15 },
+  { "id": "soudeur",     "label": "Soudeur",     "icon": "🔩", "color": "from-slate-500  to-gray-600",   "count": 11 }
+]
