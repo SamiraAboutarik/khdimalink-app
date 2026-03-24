@@ -12,6 +12,8 @@ import Chat           from './pages/Chat'
 import Rating         from './pages/Rating'
 import Dashboard      from './pages/Dashboard'
 import Profile        from './pages/Profile'
+import MapView        from './pages/MapView'
+import Payment        from './pages/Payment'
 
 function AppLayout() {
   return (
@@ -27,6 +29,8 @@ function AppLayout() {
         <Route path="/rating/:id"   element={<ProtectedRoute><Rating /></ProtectedRoute>} />
         <Route path="/dashboard"    element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/profile"      element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+        <Route path="/map"          element={<ProtectedRoute><MapView /></ProtectedRoute>} />
+        <Route path="/payment"      element={<ProtectedRoute><Payment /></ProtectedRoute>} />
         <Route path="*"             element={<Navigate to="/" replace />} />
       </Routes>
     </>

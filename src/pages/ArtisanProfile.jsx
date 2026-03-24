@@ -1,7 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Phone, MapPin, Briefcase, Star, CheckCircle, Clock, Calendar } from 'lucide-react'
+import { ArrowLeft, Phone, MapPin, Briefcase, Star, CheckCircle, Clock, Calendar, MessageCircle, CreditCard } from 'lucide-react'
 import artisans from '../data/artisans.json'
 import StarRating from '../components/StarRating'
+import { useApp } from '../context/AppContext'
 
 const REVIEWS = [
   { author: 'Fatima Z.', date: 'Il y a 2 jours', text: 'Excellent travail, très professionnel et ponctuel !', rating: 5 },
@@ -12,6 +13,7 @@ const REVIEWS = [
 export default function ArtisanProfile() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { t } = useApp()
   const artisan = artisans.find(a => a.id === Number(id))
 
   if (!artisan) return (
@@ -21,9 +23,10 @@ export default function ArtisanProfile() {
   )
 
   return (
-    <div className="gradient-bg min-h-screen pb-24 pt-14">
+    <div className="gradient-bg min-h-screen pb-28 pt-14">
       <div className="max-w-lg mx-auto">
-        {/* Back button */}
+
+        {/* Back */}
         <button onClick={() => navigate(-1)}
           className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-4 transition-colors">
           <ArrowLeft size={18} />
@@ -33,15 +36,12 @@ export default function ArtisanProfile() {
         {/* Hero card */}
         <div className="mx-4 glass rounded-2xl p-5 mb-4 animate-fadeInUp">
           <div className="flex items-start gap-4">
-            {/* Avatar */}
             <div className="relative shrink-0">
               <img src={artisan.avatar} alt={artisan.name}
                 className="w-20 h-20 rounded-2xl bg-navy-700 object-cover" />
               <span className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-navy-900
                 ${artisan.available ? 'bg-brand-green' : 'bg-slate-500'}`} />
             </div>
-
-            {/* Info */}
             <div className="flex-1">
               <h1 className="text-lg font-display font-bold text-white">{artisan.name}</h1>
               <p className="text-teal text-sm font-medium capitalize mb-1">{artisan.category}</p>
@@ -56,15 +56,13 @@ export default function ArtisanProfile() {
             </div>
           </div>
 
-          {/* Bio */}
           <p className="text-slate-300 text-sm mt-4 leading-relaxed">{artisan.bio}</p>
 
-          {/* Stats row */}
           <div className="grid grid-cols-3 gap-3 mt-4">
             {[
-              { label: 'Expérience',   value: artisan.experience,    icon: Briefcase },
-              { label: 'Missions',     value: artisan.completedJobs, icon: CheckCircle },
-              { label: 'Réponse',      value: artisan.responseTime,  icon: Clock },
+              { label: 'Expérience',  value: artisan.experience,    icon: Briefcase },
+              { label: 'Missions',    value: artisan.completedJobs, icon: CheckCircle },
+              { label: 'Réponse',     value: artisan.responseTime,  icon: Clock },
             ].map(({ label, value, icon: Icon }) => (
               <div key={label} className="bg-white/4 rounded-xl p-3 text-center">
                 <Icon size={14} className="text-teal mx-auto mb-1" />
@@ -80,15 +78,14 @@ export default function ArtisanProfile() {
           <h2 className="text-sm font-semibold text-white mb-3">Compétences</h2>
           <div className="flex flex-wrap gap-2">
             {artisan.skills.map(skill => (
-              <span key={skill}
-                className="text-xs bg-teal/10 text-teal border border-teal/20 px-3 py-1 rounded-full">
+              <span key={skill} className="text-xs bg-teal/10 text-teal border border-teal/20 px-3 py-1 rounded-full">
                 {skill}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Price */}
+        {/* Price + Phone */}
         <div className="mx-4 glass rounded-2xl p-4 mb-4 animate-fadeInUp anim-delay-2">
           <div className="flex items-center justify-between">
             <div>
@@ -97,10 +94,31 @@ export default function ArtisanProfile() {
             </div>
             <div className="text-right">
               <p className="text-xs text-slate-400">Contact</p>
-              <p className="text-sm text-teal font-medium flex items-center gap-1">
+              <p className="text-sm text-teal font-medium flex items-center gap-1 justify-end">
                 <Phone size={12} /> {artisan.phone}
               </p>
             </div>
+          </div>
+        </div>
+
+        {/* Payment methods teaser */}
+        <div className="mx-4 glass rounded-2xl p-4 mb-4 animate-fadeInUp anim-delay-2 border border-teal/10">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CreditCard size={16} className="text-teal" />
+              <span className="text-sm font-semibold text-white">Paiement sécurisé</span>
+            </div>
+            <button
+              onClick={() => navigate('/payment')}
+              className="text-xs text-teal bg-teal/10 px-3 py-1.5 rounded-full hover:bg-teal/20 transition-all"
+            >
+              Voir les options →
+            </button>
+          </div>
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            {['💵 Cash', '💳 CMI', '📱 CIH Mobile', '🏦 Wafacash', '📲 PayZone'].map(m => (
+              <span key={m} className="text-[10px] text-slate-400 bg-white/5 px-2 py-1 rounded-full">{m}</span>
+            ))}
           </div>
         </div>
 
@@ -126,16 +144,33 @@ export default function ArtisanProfile() {
           </div>
         </div>
 
-        {/* CTA */}
+        {/* ── DOUBLE CTA ── */}
         <div className="fixed bottom-0 left-0 right-0 p-4 glass border-t border-white/5 max-w-lg mx-auto">
-          <button
-            onClick={() => navigate(`/booking/${artisan.id}`)}
-            className="w-full gradient-orange py-4 rounded-xl font-bold text-white
-              shadow-orange hover:opacity-90 transition-all flex items-center justify-center gap-2">
-            <Calendar size={18} />
-            Réserver ce service
-          </button>
+          <div className="flex gap-3">
+            {/* Discuter */}
+            <button
+              onClick={() => navigate('/chat')}
+              className="flex-1 flex items-center justify-center gap-2
+                border border-teal/50 text-teal bg-teal/8 hover:bg-teal/15
+                py-3.5 rounded-xl font-semibold transition-all hover:scale-[1.02] active:scale-95"
+            >
+              <MessageCircle size={18} />
+              {t.discuss}
+            </button>
+
+            {/* Réserver */}
+            <button
+              onClick={() => navigate(`/booking/${artisan.id}`)}
+              className="flex-[1.6] gradient-orange py-3.5 rounded-xl font-bold text-white
+                shadow-orange hover:opacity-90 transition-all flex items-center justify-center gap-2
+                hover:scale-[1.02] active:scale-95"
+            >
+              <Calendar size={18} />
+              {t.book}
+            </button>
+          </div>
         </div>
+
       </div>
     </div>
   )
