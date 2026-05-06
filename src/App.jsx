@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
+import { useTheme } from './hooks/useTheme'
 
 import Login          from './pages/Login'
 import Home           from './pages/Home'
@@ -38,6 +39,8 @@ function AppLayout() {
 }
 
 export default function App() {
+  useTheme()
+
   return (
     <AppProvider>
       <BrowserRouter>

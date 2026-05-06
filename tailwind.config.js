@@ -22,6 +22,13 @@ export default {
           green:  '#22C55E',
           amber:  '#FBBF24',
         },
+        light: {
+          bg:      '#FFFAF5',
+          surface: '#F5EDE0',
+          border:  '#E8D5C0',
+          text:    '#1A1512',
+          muted:   '#6B5E52',
+        },
       },
       boxShadow: {
         card:   '0 4px 24px rgba(0,0,0,0.25)',

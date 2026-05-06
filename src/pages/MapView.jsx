@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { MapPin, Filter, Star, Clock, Navigation, X } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import artisans from '../data/artisans.json'
@@ -25,6 +25,11 @@ const CAT_COLOR = {
 // Derived from lat/lng normalized to a bounding box
 const LAT_MIN = 30.405, LAT_MAX = 30.445
 const LNG_MIN = -9.620, LNG_MAX = -9.570
+const THEME_KEY = 'khedmalink-theme'
+
+function getCurrentTheme() {
+  return localStorage.getItem(THEME_KEY) || 'light'
+}
 function toPercent(lat, lng) {
   return {
     x: ((lng - LNG_MIN) / (LNG_MAX - LNG_MIN)) * 100,
@@ -38,6 +43,27 @@ export default function MapView() {
   const [filterAvail, setFilterAvail]     = useState(false)
   const [selectedArtisan, setSelectedArtisan] = useState(null)
   const [showFilters, setShowFilters]     = useState(false)
+  const [theme, setTheme] = useState(getCurrentTheme)
+  const isDark = theme === 'dark'
+
+  useEffect(() => {
+    const syncTheme = () => {
+      setTheme(document.documentElement.classList.contains('dark') ? 'dark' : getCurrentTheme())
+    }
+
+    syncTheme()
+    window.addEventListener('khedmalink-theme-change', syncTheme)
+    window.addEventListener('storage', syncTheme)
+
+    const observer = new MutationObserver(syncTheme)
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+
+    return () => {
+      window.removeEventListener('khedmalink-theme-change', syncTheme)
+      window.removeEventListener('storage', syncTheme)
+      observer.disconnect()
+    }
+  }, [])
 
   const filtered = useMemo(() => artisans.filter(a => {
     if (filterCat && a.category !== filterCat) return false
@@ -111,29 +137,34 @@ export default function MapView() {
 
         {/* ── PSEUDO-MAP CANVAS ── */}
         <div className="mx-4 mb-4 relative rounded-2xl overflow-hidden" style={{ height: '280px' }}>
-          {/* Map background – dark tile style */}
+          {/* Custom pseudo-map background. This project does not use Leaflet, Google Maps, or Mapbox. */}
           <div className="absolute inset-0" style={{
-            background: `
-              linear-gradient(rgba(10,191,188,0.04) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(10,191,188,0.04) 1px, transparent 1px),
-              #0B1120`,
+            background: isDark
+              ? `
+                linear-gradient(rgba(10,191,188,0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(10,191,188,0.04) 1px, transparent 1px),
+                #0B1120`
+              : `
+                linear-gradient(rgba(107,94,82,0.18) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(107,94,82,0.18) 1px, transparent 1px),
+                #F5EDE0`,
             backgroundSize: '28px 28px',
           }} />
 
           {/* Major roads */}
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             {/* Horizontal roads */}
-            <line x1="0" y1="38" x2="100" y2="38" stroke="rgba(255,255,255,0.07)" strokeWidth="0.6"/>
-            <line x1="0" y1="62" x2="100" y2="62" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"/>
-            <line x1="0" y1="78" x2="100" y2="78" stroke="rgba(255,255,255,0.05)" strokeWidth="0.4"/>
+            <line x1="0" y1="38" x2="100" y2="38" stroke={isDark ? 'rgba(255,255,255,0.07)' : 'rgba(107,94,82,0.28)'} strokeWidth="0.6"/>
+            <line x1="0" y1="62" x2="100" y2="62" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(107,94,82,0.22)'} strokeWidth="0.5"/>
+            <line x1="0" y1="78" x2="100" y2="78" stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(107,94,82,0.18)'} strokeWidth="0.4"/>
             {/* Vertical roads */}
-            <line x1="30" y1="0" x2="30" y2="100" stroke="rgba(255,255,255,0.07)" strokeWidth="0.6"/>
-            <line x1="60" y1="0" x2="60" y2="100" stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"/>
-            <line x1="78" y1="0" x2="78" y2="100" stroke="rgba(255,255,255,0.04)" strokeWidth="0.4"/>
+            <line x1="30" y1="0" x2="30" y2="100" stroke={isDark ? 'rgba(255,255,255,0.07)' : 'rgba(107,94,82,0.28)'} strokeWidth="0.6"/>
+            <line x1="60" y1="0" x2="60" y2="100" stroke={isDark ? 'rgba(255,255,255,0.06)' : 'rgba(107,94,82,0.22)'} strokeWidth="0.5"/>
+            <line x1="78" y1="0" x2="78" y2="100" stroke={isDark ? 'rgba(255,255,255,0.04)' : 'rgba(107,94,82,0.16)'} strokeWidth="0.4"/>
             {/* Diagonal boulevard */}
-            <line x1="0" y1="25" x2="75" y2="100" stroke="rgba(10,191,188,0.12)" strokeWidth="0.8"/>
+            <line x1="0" y1="25" x2="75" y2="100" stroke={isDark ? 'rgba(10,191,188,0.12)' : 'rgba(10,191,188,0.28)'} strokeWidth="0.8"/>
             {/* Boulevard Moqawama */}
-            <line x1="15" y1="0" x2="15" y2="100" stroke="rgba(10,191,188,0.1)" strokeWidth="1.2"/>
+            <line x1="15" y1="0" x2="15" y2="100" stroke={isDark ? 'rgba(10,191,188,0.1)' : 'rgba(10,191,188,0.24)'} strokeWidth="1.2"/>
           </svg>
 
           {/* Zone labels */}
