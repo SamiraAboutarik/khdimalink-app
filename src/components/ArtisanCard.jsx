@@ -1,35 +1,31 @@
 import { Link } from 'react-router-dom'
-import { MapPin, Clock, Briefcase } from 'lucide-react'
+import { Briefcase, Clock, Heart, MapPin } from 'lucide-react'
 import StarRating from './StarRating'
+import { useApp } from '../context/AppContext'
 
 const CATEGORY_COLORS = {
-  plombier:    'bg-blue-500/15 text-blue-400',
+  plombier: 'bg-blue-500/15 text-blue-400',
   electricien: 'bg-yellow-500/15 text-yellow-400',
-  menuisier:   'bg-amber-500/15 text-amber-400',
-  soudeur:     'bg-slate-500/15 text-slate-300',
-  peintre:     'bg-pink-500/15 text-pink-400',
-  carreleur:   'bg-orange-500/15 text-orange-400',
+  menuisier: 'bg-amber-500/15 text-amber-400',
+  soudeur: 'bg-slate-500/15 text-slate-300',
+  peintre: 'bg-pink-500/15 text-pink-400',
+  carreleur: 'bg-orange-500/15 text-orange-400',
 }
 
 export default function ArtisanCard({ artisan, delay = 0 }) {
+  const { favorites, toggleFavorite, reviews } = useApp()
   const catClass = CATEGORY_COLORS[artisan.category] || 'bg-teal/15 text-teal'
-
-  // Compatibilite : avatar vient de avatar_url ou avatar.
-  const avatarUrl = artisan.avatar_url
-    || artisan.avatar
-    || `https://api.dicebear.com/7.x/avataaars/svg?seed=${artisan.name}`
-
-  // Prix : price_label ou price.
+  const providerReviews = reviews.filter(review => String(review.providerId) === String(artisan.id))
+  const averageRating = providerReviews.length
+    ? providerReviews.reduce((sum, review) => sum + Number(review.rating), 0) / providerReviews.length
+    : Number(artisan.rating || 0)
+  const reviewCount = providerReviews.length || artisan.review_count || artisan.reviews || 0
+  const isFavorite = favorites.includes(String(artisan.id))
+  const avatarUrl = artisan.avatar_url || artisan.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${artisan.name}`
   const priceLabel = artisan.price_label || artisan.price || 'Sur devis'
-  const priceMin   = priceLabel.split('–')[0]
-
-  // Expérience
-  const experience = artisan.experience_label || artisan.experience || '—'
-
-  // Temps de réponse
-  const responseTime = artisan.response_time || artisan.responseTime || '—'
-
-  // Distance
+  const priceMin = priceLabel.split('-')[0]
+  const experience = artisan.experience_label || artisan.experience || '-'
+  const responseTime = artisan.response_time || artisan.responseTime || '-'
   const distance = artisan.distance_label || artisan.distance || ''
 
   return (
@@ -38,9 +34,7 @@ export default function ArtisanCard({ artisan, delay = 0 }) {
       className={`block glass rounded-2xl p-4 hover:border-teal/30 hover:shadow-glow
         transition-all duration-300 group animate-fadeInUp anim-delay-${delay + 1}`}
     >
-      {/* Top row */}
       <div className="flex items-start gap-3 mb-3">
-        {/* Avatar */}
         <div className="relative shrink-0">
           <img
             src={avatarUrl}
@@ -51,7 +45,6 @@ export default function ArtisanCard({ artisan, delay = 0 }) {
             ${artisan.available ? 'bg-green-400' : 'bg-slate-500'}`} />
         </div>
 
-        {/* Name + category */}
         <div className="flex-1 min-w-0">
           <h3 className="font-display font-semibold text-white truncate group-hover:text-teal transition-colors">
             {artisan.name}
@@ -61,23 +54,31 @@ export default function ArtisanCard({ artisan, delay = 0 }) {
           </span>
         </div>
 
-        {/* Price */}
-        <div className="text-right shrink-0">
-          <div className="text-xs text-slate-400">À partir de</div>
-          <div className="text-sm font-semibold text-brand-orange">
-            {priceMin}
+        <div className="flex items-start gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={event => {
+              event.preventDefault()
+              toggleFavorite(artisan.id)
+            }}
+            className={`p-2 rounded-xl transition-all ${isFavorite ? 'bg-red-500/15 text-red-400' : 'bg-white/5 text-slate-400 hover:text-red-400'}`}
+            aria-label="Favori"
+          >
+            <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+          </button>
+          <div className="text-right">
+            <div className="text-xs text-slate-400">A partir de</div>
+            <div className="text-sm font-semibold text-brand-orange">{priceMin}</div>
           </div>
         </div>
       </div>
 
-      {/* Rating row */}
       <div className="flex items-center gap-1.5 mb-3">
-        <StarRating rating={artisan.rating || 0} size={13} />
-        <span className="text-sm font-semibold text-amber-400">{artisan.rating || '—'}</span>
-        <span className="text-xs text-slate-500">({artisan.review_count ?? artisan.reviews ?? 0} avis)</span>
+        <StarRating rating={averageRating} size={13} />
+        <span className="text-sm font-semibold text-amber-400">{averageRating ? averageRating.toFixed(1) : '-'}</span>
+        <span className="text-xs text-slate-500">({reviewCount} avis)</span>
       </div>
 
-      {/* Stats row */}
       <div className="flex items-center gap-3 text-xs text-slate-400">
         {distance && (
           <span className="flex items-center gap-1">

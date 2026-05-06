@@ -3,7 +3,12 @@ import { getAuth, isAuthenticated, login as mockLogin, logout as mockLogout } fr
 
 const AppContext = createContext(null)
 const PROFILE_KEY = 'khedmalink_profile'
-const BOOKINGS_KEY = 'khedmalink_bookings'
+const BOOKINGS_KEY = 'khedmalink-bookings'
+const LEGACY_BOOKINGS_KEY = 'khedmalink_bookings'
+const FAVORITES_KEY = 'khedmalink-favorites'
+const REVIEWS_KEY = 'khedmalink-reviews'
+const ADDRESSES_KEY = 'khedmalink-addresses'
+const CHAT_KEY = 'khedmalink-chat'
 
 export const T = {
   fr: {
@@ -72,6 +77,10 @@ function readJson(key, fallback) {
   }
 }
 
+function writeJson(key, value) {
+  localStorage.setItem(key, JSON.stringify(value))
+}
+
 function getStoredProfile() {
   return {
     id: 'mock-user',
@@ -92,6 +101,11 @@ export function AppProvider({ children }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [bookings, setBookings] = useState([])
+  const [favorites, setFavorites] = useState([])
+  const [reviews, setReviews] = useState([])
+  const [addresses, setAddresses] = useState([])
+  const [chatThreads, setChatThreads] = useState([])
+  const [toast, setToast] = useState('')
   const [loading, setLoading] = useState(true)
 
   const t = T[lang]
@@ -111,65 +125,220 @@ export function AppProvider({ children }) {
       })
       setRole(profile.role)
       setLang(profile.lang)
-      setBookings(readJson(BOOKINGS_KEY, []))
     }
 
+    const storedBookings = readJson(BOOKINGS_KEY, null) || readJson(LEGACY_BOOKINGS_KEY, [])
+    setBookings(storedBookings)
+    setFavorites(readJson(FAVORITES_KEY, []).map(String))
+    setReviews(readJson(REVIEWS_KEY, []))
+    setAddresses(readJson(ADDRESSES_KEY, []))
+    setChatThreads(readJson(CHAT_KEY, []))
     setLoading(false)
   }, [])
 
+  const showToast = (message) => {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 2200)
+  }
+
   const login = (userData, userRole = 'client') => {
+    const authenticatedRole = userData.role || userRole || 'client'
     const email = userData.email
-    mockLogin(email)
+    mockLogin(email, { email, phone: userData.phone, role: authenticatedRole, name: userData.name })
 
     const profile = {
       id: userData.id || `mock-user-${Date.now()}`,
       name: userData.name || email.split('@')[0] || 'Utilisateur',
       phone: userData.phone || '',
       city: userData.city || 'Agadir',
-      role: userRole,
+      role: authenticatedRole,
       lang,
     }
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify(profile))
     setUser({ ...profile, email })
-    setRole(userRole)
+    setRole(authenticatedRole)
+
+    return { ...profile, email }
   }
 
   const logout = () => {
     mockLogout()
     localStorage.removeItem(PROFILE_KEY)
-    localStorage.removeItem(BOOKINGS_KEY)
     setUser(null)
     setRole(null)
-    setBookings([])
   }
 
-  const addBooking = async (booking) => {
+  const createBooking = async (booking) => {
     if (!user) return { data: null, error: new Error('Utilisateur non connecte') }
 
     const data = {
       id: crypto.randomUUID(),
       client_id: user.id,
       artisan_id: booking.artisanId,
+      artisanId: booking.artisanId,
       artisanName: booking.artisanName,
+      artisanAvatar: booking.artisanAvatar || '',
+      artisanCategory: booking.artisanCategory || '',
       service_type: booking.service,
+      service: booking.service,
       date: booking.date,
       time_slot: booking.time,
+      time: booking.time,
       location: booking.location,
+      addressId: booking.addressId || '',
       note: booking.note,
       status: 'pending',
-      price_label: 'A definir',
+      paymentStatus: 'unpaid',
+      amount: booking.amount || 250,
+      price_label: `${booking.amount || 250} MAD`,
       created_at: new Date().toISOString(),
     }
 
     setBookings(prev => {
       const next = [data, ...prev]
-      localStorage.setItem(BOOKINGS_KEY, JSON.stringify(next))
+      writeJson(BOOKINGS_KEY, next)
       return next
     })
+    showToast('Reservation creee')
 
     return { data, error: null }
   }
+
+  const updateBookingStatus = (bookingId, status, extra = {}) => {
+    setBookings(prev => {
+      const next = prev.map(booking => (
+        String(booking.id) === String(bookingId)
+          ? { ...booking, ...extra, status, updated_at: new Date().toISOString() }
+          : booking
+      ))
+      writeJson(BOOKINGS_KEY, next)
+      return next
+    })
+  }
+
+  const cancelBooking = (bookingId) => {
+    updateBookingStatus(bookingId, 'cancelled')
+    showToast('Reservation annulee')
+  }
+
+  const toggleFavorite = (providerId) => {
+    const id = String(providerId)
+    let added = false
+    setFavorites(prev => {
+      const exists = prev.includes(id)
+      added = !exists
+      const next = exists ? prev.filter(item => item !== id) : [...prev, id]
+      writeJson(FAVORITES_KEY, next)
+      return next
+    })
+    showToast(added ? 'Ajoute aux favoris' : 'Retire des favoris')
+  }
+
+  const addReview = (review) => {
+    const data = {
+      id: crypto.randomUUID(),
+      providerId: String(review.providerId),
+      bookingId: review.bookingId,
+      clientId: user?.id || 'mock-user',
+      clientName: user?.name || 'Client',
+      rating: review.rating,
+      comment: review.comment,
+      date: new Date().toISOString(),
+    }
+
+    setReviews(prev => {
+      const next = [data, ...prev.filter(item => item.bookingId !== review.bookingId)]
+      writeJson(REVIEWS_KEY, next)
+      return next
+    })
+    showToast('Avis publie')
+    return data
+  }
+
+  const saveAddress = (address) => {
+    const data = {
+      id: address.id || crypto.randomUUID(),
+      label: address.label || 'Maison',
+      text: address.text,
+      city: address.city,
+    }
+
+    setAddresses(prev => {
+      const next = address.id
+        ? prev.map(item => item.id === address.id ? data : item)
+        : [data, ...prev]
+      writeJson(ADDRESSES_KEY, next)
+      return next
+    })
+    showToast(address.id ? 'Adresse modifiee' : 'Adresse ajoutee')
+  }
+
+  const deleteAddress = (addressId) => {
+    setAddresses(prev => {
+      const next = prev.filter(address => address.id !== addressId)
+      writeJson(ADDRESSES_KEY, next)
+      return next
+    })
+    showToast('Adresse supprimee')
+  }
+
+  const getThread = (bookingId) => (
+    chatThreads.find(thread => String(thread.bookingId) === String(bookingId)) || { bookingId, messages: [], unread: 0 }
+  )
+
+  const markThreadRead = (bookingId) => {
+    setChatThreads(prev => {
+      const next = prev.map(thread => (
+        String(thread.bookingId) === String(bookingId) ? { ...thread, unread: 0 } : thread
+      ))
+      writeJson(CHAT_KEY, next)
+      return next
+    })
+  }
+
+  const sendChatMessage = (bookingId, text) => {
+    const message = {
+      id: crypto.randomUUID(),
+      sender: 'client',
+      text,
+      timestamp: new Date().toISOString(),
+    }
+
+    setChatThreads(prev => {
+      const existing = prev.find(thread => String(thread.bookingId) === String(bookingId))
+      const next = existing
+        ? prev.map(thread => String(thread.bookingId) === String(bookingId)
+          ? { ...thread, messages: [...thread.messages, message] }
+          : thread)
+        : [...prev, { bookingId, messages: [message], unread: 0 }]
+      writeJson(CHAT_KEY, next)
+      return next
+    })
+    showToast('Message envoye')
+
+    window.setTimeout(() => {
+      const reply = {
+        id: crypto.randomUUID(),
+        sender: 'provider',
+        text: 'Merci, je vous reponds bientot.',
+        timestamp: new Date().toISOString(),
+      }
+
+      setChatThreads(prev => {
+        const existing = prev.find(thread => String(thread.bookingId) === String(bookingId))
+        const next = existing
+          ? prev.map(thread => String(thread.bookingId) === String(bookingId)
+            ? { ...thread, messages: [...thread.messages, reply], unread: (thread.unread || 0) + 1 }
+            : thread)
+          : [...prev, { bookingId, messages: [reply], unread: 1 }]
+        writeJson(CHAT_KEY, next)
+        return next
+      })
+    }, 1000)
+  }
+
+  const unreadMessages = chatThreads.reduce((total, thread) => total + (thread.unread || 0), 0)
 
   if (loading) {
     return (
@@ -197,10 +366,20 @@ export function AppProvider({ children }) {
       darkMode, setDarkMode,
       searchQuery, setSearchQuery,
       selectedCategory, setSelectedCategory,
-      bookings, addBooking,
+      bookings, createBooking, addBooking: createBooking, cancelBooking, updateBookingStatus,
+      favorites, toggleFavorite,
+      reviews, addReview,
+      addresses, saveAddress, deleteAddress,
+      chatThreads, getThread, sendChatMessage, markThreadRead, unreadMessages,
+      showToast,
     }}>
       <div dir={t.dir} style={{ minHeight: '100vh' }}>
         {children}
+        {toast && (
+          <div className="fixed left-1/2 top-16 z-[100] -translate-x-1/2 rounded-xl border border-teal/30 bg-[#07111f]/95 px-4 py-3 text-sm font-semibold text-teal shadow-card">
+            {toast}
+          </div>
+        )}
       </div>
     </AppContext.Provider>
   )

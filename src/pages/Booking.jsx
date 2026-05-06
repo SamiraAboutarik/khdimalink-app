@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Calendar, Clock, MapPin, CheckCircle, Loader } from 'lucide-react'
+import { ArrowLeft, Calendar, Clock, MapPin, CheckCircle, Loader, Home } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import artisansData from '../data/artisans.json'
 
@@ -10,7 +10,7 @@ const SERVICES   = ['Diagnostic','Réparation','Installation','Entretien','Urgen
 export default function Booking() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { user, addBooking } = useApp()
+  const { createBooking, addresses } = useApp()
 
   const [artisan, setArtisan]     = useState(null)
   const [loading, setLoading]     = useState(true)
@@ -23,6 +23,7 @@ export default function Booking() {
   const [time, setTime]         = useState('')
   const [service, setService]   = useState('')
   const [location, setLocation] = useState('')
+  const [addressId, setAddressId] = useState('')
   const [note, setNote]         = useState('')
 
   useEffect(() => {
@@ -35,14 +36,18 @@ export default function Booking() {
     setSaving(true)
     setError('')
 
-    const { error: err } = await addBooking({
+    const { error: err } = await createBooking({
       artisanId: artisan.id,
       artisanName: artisan.name,
+      artisanAvatar: artisan.avatar || artisan.avatar_url,
+      artisanCategory: artisan.category,
       service,
       date,
       time,
       location,
+      addressId,
       note,
+      amount: artisan.price_min || 250,
     })
 
     if (err) {
@@ -156,6 +161,30 @@ export default function Booking() {
             onChange={e => setLocation(e.target.value)}
             className="w-full bg-white/5 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500
               outline-none border border-white/5 focus:border-teal/40 transition-all" />
+          {addresses.length > 0 && (
+            <div className="mt-3">
+              <label className="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                <Home size={12} className="text-teal" /> Utiliser une adresse sauvegardee
+              </label>
+              <select
+                value={addressId}
+                onChange={e => {
+                  const selected = addresses.find(address => address.id === e.target.value)
+                  setAddressId(e.target.value)
+                  if (selected) setLocation(`${selected.text}, ${selected.city}`)
+                }}
+                className="w-full bg-white/5 rounded-xl px-4 py-2.5 text-sm text-white outline-none
+                  border border-white/5 focus:border-teal/40 transition-all"
+              >
+                <option value="">Saisir une nouvelle adresse</option>
+                {addresses.map(address => (
+                  <option key={address.id} value={address.id}>
+                    {address.label} - {address.text}, {address.city}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Note */}

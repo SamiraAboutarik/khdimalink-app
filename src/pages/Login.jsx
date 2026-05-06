@@ -1,14 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Hammer, User, Phone, Lock, Eye, EyeOff, Loader, CheckCircle } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Phone, Lock, Eye, EyeOff, Loader, CheckCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { getMockUserByCredentials } from '../lib/mockAuth'
 
-const NAME_ERROR = 'Nom requis (min 3 caractères)'
 const PHONE_ERROR = 'Numéro invalide. Ex: 0612345678'
 const PASSWORD_ERROR = 'Min 8 caractères, 1 majuscule, 1 chiffre'
 
 const normalizePhone = (phone) => phone.replace(/[\s.-]/g, '')
-const isValidName = (name) => name.trim().length >= 3
 const isValidMoroccanPhone = (phone) => {
   const clean = normalizePhone(phone)
   return /^0[567]\d{8}$/.test(clean) || /^\+212[67]\d{8}$/.test(clean)
@@ -17,50 +16,66 @@ const isValidPassword = (password) => (
   password.length >= 8 && /[A-Z]/.test(password) && /\d/.test(password)
 )
 
+const roleHomePath = (role) => {
+  if (role === 'admin') return '/admin'
+  if (role === 'prestataire') return '/dashboard'
+  return '/'
+}
+
 export default function Login() {
   const { login, t } = useApp()
   const navigate = useNavigate()
+  const location = useLocation()
 
-  const [selectedRole, setSelectedRole] = useState('client')
-  const [form, setForm] = useState({ name: '', phone: '', password: '' })
-  const [touched, setTouched] = useState({ name: false, phone: false, password: false })
+  const [form, setForm] = useState({ phone: '', password: '' })
+  const [touched, setTouched] = useState({ phone: false, password: false })
   const [submitted, setSubmitted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
 
-  const nameIsValid = isValidName(form.name)
   const phoneIsValid = isValidMoroccanPhone(form.phone)
   const passwordIsValid = isValidPassword(form.password)
-  const formIsValid = nameIsValid && phoneIsValid && passwordIsValid
-  const showNameError = (touched.name || submitted) && !nameIsValid
+  const formIsValid = phoneIsValid && passwordIsValid
   const showPhoneError = (touched.phone || submitted) && !phoneIsValid
   const showPasswordError = (touched.password || submitted) && !passwordIsValid
+  const successMessage = location.state?.success
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setSubmitted(true)
-    setTouched({ name: true, phone: true, password: true })
+    setTouched({ phone: true, password: true })
 
-    if (!formIsValid) {
-      return
-    }
+    if (!formIsValid) return
 
     const phone = form.phone.trim()
     setLoading(true)
 
     window.setTimeout(() => {
-      login({
+      const mockUser = getMockUserByCredentials(phone, form.password)
+
+      if (mockUser) {
+        const user = login({
+          email: mockUser.email,
+          name: mockUser.nom,
+          phone: mockUser.phone,
+          role: mockUser.role,
+        }, mockUser.role)
+        setLoading(false)
+        setDone(true)
+        navigate(roleHomePath(user.role), { replace: true })
+        return
+      }
+
+      const user = login({
         email: `${phone.replace(/\D/g, '') || 'user'}@mock.local`,
-        name: form.name.trim(),
+        name: phone,
         phone,
-      }, selectedRole)
+        role: 'client',
+      }, 'client')
       setLoading(false)
       setDone(true)
-
-      window.setTimeout(() => {
-        navigate(selectedRole === 'artisan' ? '/dashboard' : '/')
-      }, 500)
+      navigate(roleHomePath(user.role), { replace: true })
     }, 250)
   }
 
@@ -86,63 +101,26 @@ export default function Login() {
           <p className="text-slate-400 text-sm mt-2">{t.appTagline}</p>
         </div>
 
-        <div className="flex glass rounded-xl p-1 mb-5 animate-fadeInUp anim-delay-1">
-          {[
-            { value: 'client', label: t.iam_client, Icon: User },
-            { value: 'artisan', label: t.iam_artisan, Icon: Hammer },
-          ].map(({ value, label, Icon }) => (
-            <button
-              type="button"
-              key={value}
-              onClick={() => setSelectedRole(value)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium
-                transition-all duration-200
-                ${selectedRole === value
-                  ? 'gradient-teal text-white shadow-glow'
-                  : 'text-slate-400 hover:text-white'}`}
-            >
-              <Icon size={15} />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3 animate-fadeInUp anim-delay-2">
-          <div className="relative">
-            <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Nom complet"
-              value={form.name}
-              onChange={e => {
-                setForm(f => ({ ...f, name: e.target.value }))
-              }}
-              onBlur={() => setTouched(t => ({ ...t, name: true }))}
-              className="w-full glass rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500
-                outline-none focus:border-teal/50 transition-all"
-            />
+        {successMessage && (
+          <div className="glass rounded-xl p-3 mb-4 border border-brand-green/30 animate-fadeInUp">
+            <p className="text-xs text-brand-green text-center font-semibold">{successMessage}</p>
           </div>
-          {showNameError && (
-            <p className="text-red-400 text-xs px-1 -mt-1">{NAME_ERROR}</p>
-          )}
+        )}
 
+        <form onSubmit={handleSubmit} className="space-y-3 animate-fadeInUp anim-delay-1">
           <div className="relative">
             <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="tel"
               placeholder="Numéro de téléphone"
               value={form.phone}
-              onChange={e => {
-                setForm(f => ({ ...f, phone: e.target.value }))
-              }}
+              onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
               onBlur={() => setTouched(t => ({ ...t, phone: true }))}
               className="w-full glass rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-slate-500
                 outline-none focus:border-teal/50 transition-all"
             />
           </div>
-          {showPhoneError && (
-            <p className="text-red-400 text-xs px-1 -mt-1">{PHONE_ERROR}</p>
-          )}
+          {showPhoneError && <p className="text-red-400 text-xs px-1 -mt-1">{PHONE_ERROR}</p>}
 
           <div className="relative">
             <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -150,9 +128,7 @@ export default function Login() {
               type={showPassword ? 'text' : 'password'}
               placeholder="Mot de passe"
               value={form.password}
-              onChange={e => {
-                setForm(f => ({ ...f, password: e.target.value }))
-              }}
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
               onBlur={() => setTouched(t => ({ ...t, password: true }))}
               className="w-full glass rounded-xl pl-10 pr-11 py-3 text-sm text-white placeholder-slate-500
                 outline-none focus:border-teal/50 transition-all"
@@ -165,9 +141,7 @@ export default function Login() {
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {showPasswordError && (
-            <p className="text-red-400 text-xs px-1 -mt-1">{PASSWORD_ERROR}</p>
-          )}
+          {showPasswordError && <p className="text-red-400 text-xs px-1 -mt-1">{PASSWORD_ERROR}</p>}
 
           <button
             type="submit"
@@ -185,11 +159,12 @@ export default function Login() {
           </button>
         </form>
 
-        <div className="glass rounded-xl p-3 mt-5 animate-fadeInUp anim-delay-3 border border-teal/15">
-          <p className="text-xs text-slate-400 text-center leading-relaxed">
-            Auth locale de demonstration. Aucun serveur n'est contacte.
-          </p>
-        </div>
+        <p className="text-center text-xs text-slate-400 mt-5 animate-fadeInUp anim-delay-2">
+          Pas encore de compte ?{' '}
+          <Link to="/register" className="text-teal font-semibold hover:underline">
+            S'inscrire
+          </Link>
+        </p>
       </div>
     </div>
   )
