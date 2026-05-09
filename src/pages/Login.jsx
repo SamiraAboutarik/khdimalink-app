@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Phone, Lock, Eye, EyeOff, Loader, CheckCircle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { getMockUserByCredentials } from '../lib/mockAuth'
+import { getLoginResult } from '../lib/mockAuth'
 
 const PHONE_ERROR = 'Numéro invalide. Ex: 0612345678'
 const PASSWORD_ERROR = 'Min 8 caractères, 1 majuscule, 1 chiffre'
@@ -33,6 +33,7 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
+  const [authError, setAuthError] = useState('')
 
   const phoneIsValid = isValidMoroccanPhone(form.phone)
   const passwordIsValid = isValidPassword(form.password)
@@ -49,30 +50,26 @@ export default function Login() {
     if (!formIsValid) return
 
     const phone = form.phone.trim()
+    setAuthError('')
     setLoading(true)
 
     window.setTimeout(() => {
-      const mockUser = getMockUserByCredentials(phone, form.password)
+      const { user: authUser, error } = getLoginResult(phone, form.password)
 
-      if (mockUser) {
-        const user = login({
-          email: mockUser.email,
-          name: mockUser.nom,
-          phone: mockUser.phone,
-          role: mockUser.role,
-        }, mockUser.role)
+      if (!authUser) {
+        setAuthError(error)
         setLoading(false)
-        setDone(true)
-        navigate(roleHomePath(user.role), { replace: true })
         return
       }
 
       const user = login({
-        email: `${phone.replace(/\D/g, '') || 'user'}@mock.local`,
-        name: phone,
-        phone,
-        role: 'client',
-      }, 'client')
+        id: authUser.id,
+        email: authUser.email || `${authUser.phone.replace(/\D/g, '') || 'user'}@mock.local`,
+        name: authUser.nom || authUser.name,
+        phone: authUser.phone,
+        city: authUser.ville || authUser.city,
+        role: authUser.role,
+      }, authUser.role)
       setLoading(false)
       setDone(true)
       navigate(roleHomePath(user.role), { replace: true })
@@ -157,6 +154,7 @@ export default function Login() {
               : <><Phone size={17} /> Se connecter</>
             }
           </button>
+          {authError && <p className="text-red-400 text-xs px-1 text-center">{authError}</p>}
         </form>
 
         <p className="text-center text-xs text-slate-400 mt-5 animate-fadeInUp anim-delay-2">

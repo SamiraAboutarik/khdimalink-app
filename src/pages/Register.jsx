@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Briefcase, CheckCircle, Eye, EyeOff, Hammer, Image, Lock, MapPin, Phone, User } from 'lucide-react'
+import { MOCK_ADMIN_USER, MOCK_PROVIDER_USER, REGISTERED_USERS_KEY, getRegisteredUsers, normalizePhone } from '../lib/mockAuth'
 
 const CITIES = ['Agadir', 'Casablanca', 'Rabat', 'Marrakech', 'Fès', 'Tanger', 'Oujda', 'Autre']
 const SERVICE_CATEGORIES = ['Plomberie', 'Électricité', 'Menuiserie', 'Peinture', 'Nettoyage', 'Jardinage', 'Autre']
@@ -31,7 +32,6 @@ const initialForm = {
   photo: null,
 }
 
-const normalizePhone = (phone) => phone.replace(/[\s.-]/g, '')
 const isValidPhone = (phone) => /^0[567]\d{8}$/.test(normalizePhone(phone))
 const isValidPassword = (password) => password.length >= 8 && /[A-Z]/.test(password) && /\d/.test(password)
 const isValidPhoto = (file) => file && file.type.startsWith('image/') && file.size <= 2 * 1024 * 1024
@@ -71,6 +71,7 @@ export default function Register() {
   const [submitted, setSubmitted] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [phoneSubmitError, setPhoneSubmitError] = useState('')
 
   const fields = role === 'client'
     ? ['name', 'phone', 'city', 'password', 'confirmPassword', 'terms']
@@ -92,12 +93,35 @@ export default function Register() {
   const handleSubmit = (e) => {
     e.preventDefault()
     setSubmitted(true)
+    setPhoneSubmitError('')
     setTouched(Object.fromEntries(fields.map(field => [field, true])))
 
     if (!formIsValid) return
 
+    const cleanPhone = normalizePhone(form.phone)
+    const existingUsers = getRegisteredUsers()
+    const phoneExists = [MOCK_ADMIN_USER, MOCK_PROVIDER_USER, ...existingUsers]
+      .some(user => normalizePhone(user.phone) === cleanPhone)
+
+    if (phoneExists) {
+      setPhoneSubmitError('Ce numéro est déjà utilisé.')
+      return
+    }
+
+    const newUser = {
+      id: Date.now(),
+      nom: form.name.trim(),
+      phone: cleanPhone,
+      password: form.password,
+      role,
+      ville: form.city,
+      createdAt: new Date().toISOString(),
+    }
+
+    localStorage.setItem(REGISTERED_USERS_KEY, JSON.stringify([...existingUsers, newUser]))
+
     navigate('/login', {
-      state: { success: 'Compte créé avec succès !' },
+      state: { success: 'Compte créé ! Connectez-vous.' },
       replace: true,
     })
   }
@@ -160,12 +184,16 @@ export default function Register() {
               type="tel"
               placeholder="Téléphone marocain"
               value={form.phone}
-              onChange={e => updateField('phone', e.target.value)}
+              onChange={e => {
+                updateField('phone', e.target.value)
+                setPhoneSubmitError('')
+              }}
               onBlur={() => markTouched('phone')}
               className={iconInputClass}
             />
           </div>
           {shouldShowError('phone') && <p className="text-red-400 text-xs px-1 -mt-1">{errors.phone}</p>}
+          {!shouldShowError('phone') && phoneSubmitError && <p className="text-red-400 text-xs px-1 -mt-1">{phoneSubmitError}</p>}
 
           <div className="relative">
             <MapPin size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />

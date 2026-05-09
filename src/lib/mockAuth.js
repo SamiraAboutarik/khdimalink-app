@@ -1,4 +1,5 @@
 const AUTH_KEY = 'khedmalink_auth'
+export const REGISTERED_USERS_KEY = 'khedmalink-users'
 
 export const MOCK_ADMIN_USER = {
   phone: '0600000000',
@@ -16,12 +17,38 @@ export const MOCK_PROVIDER_USER = {
   email: 'prestataire@khdimalink.local',
 }
 
+export const normalizePhone = (phone = '') => {
+  const cleanPhone = phone.replace(/[\s.-]/g, '')
+  return cleanPhone.replace(/^\+212([567]\d{8})$/, '0$1')
+}
+
+export function getRegisteredUsers() {
+  try {
+    const users = JSON.parse(localStorage.getItem(REGISTERED_USERS_KEY))
+    return Array.isArray(users) ? users : []
+  } catch {
+    return []
+  }
+}
+
+export function getLoginResult(phone, password) {
+  const cleanPhone = normalizePhone(phone)
+  const users = [MOCK_ADMIN_USER, MOCK_PROVIDER_USER, ...getRegisteredUsers()]
+  const user = users.find(item => normalizePhone(item.phone) === cleanPhone)
+
+  if (!user) {
+    return { user: null, error: 'Numéro introuvable. Veuillez vous inscrire.' }
+  }
+
+  if (user.password !== password) {
+    return { user: null, error: 'Mot de passe incorrect.' }
+  }
+
+  return { user, error: '' }
+}
+
 export function getMockUserByCredentials(phone, password) {
-  const cleanPhone = phone.replace(/\s/g, '')
-  const users = [MOCK_ADMIN_USER, MOCK_PROVIDER_USER]
-  const user = users.find(item => cleanPhone === item.phone && password === item.password)
-  if (user) return user
-  return null
+  return getLoginResult(phone, password).user
 }
 
 export function login(email, user = { email }) {
